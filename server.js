@@ -18,6 +18,8 @@ const rss_generator = require('./classes/rss_generator.js');
 const os = require("os");
 const util = require("util");
 const path = require("path");
+const createApp = require('./main');
+const renderer = require('vue-server-renderer').createRenderer();
 
 /**
  * Utilities
@@ -1591,7 +1593,22 @@ app.get('/data/elograph.json',  asyncMiddleware( async (req, res, next) => {
     res.json(json);
 }));
 
-// Catch all, return 404 page not found
+// TODO: Migrate all pages to use vue-router
 app.get('*', asyncMiddleware(async (req, res, next) => {
-    return res.status(404).render("404");
+    const context = { url: req.url }
+    createApp(context).then(app => {
+        renderer.renderToString(app, (err, html) => {
+          if (err) {
+            res.status(500).end('Internal Server Error')
+          } else {
+            res.end(html)
+          }
+        });
+    }).catch( err => {
+        if (err.code === 404) {
+            res.status(404).end('Page not found')
+        } else {
+            res.status(500).end('Internal Server Error')
+        }
+    });
 }));
